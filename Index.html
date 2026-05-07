@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CRUD Kelola Keuangan</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background: #f4f6f9;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      padding: 25px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .header h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    button {
+      border: none;
+      padding: 12px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #dc2626;
+      color: white;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .summary-box {
+      padding: 20px;
+      border-radius: 12px;
+      color: white;
+      text-align: center;
+    }
+
+    .income {
+      background: #16a34a;
+    }
+
+    .expense {
+      background: #dc2626;
+    }
+
+    .balance {
+      background: #2563eb;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    table th,
+    table td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      text-align: center;
+    }
+
+    table th {
+      background: #2563eb;
+      color: white;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .empty {
+      text-align: center;
+      color: #777;
+      padding: 20px;
+    }
+
+    @media(max-width: 768px) {
+      table {
+        font-size: 12px;
+      }
+
+      .actions {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <div class="header">
+      <h1>Aplikasi Kelola Keuangan</h1>
+      <p>CRUD pemasukan dan pengeluaran menggunakan HTML, CSS, dan JavaScript</p>
+    </div>
+
+    <div class="summary">
+      <div class="summary-box income">
+        <h3>Total Pemasukan</h3>
+        <h2 id="totalIncome">Rp 0</h2>
+      </div>
+
+      <div class="summary-box expense">
+        <h3>Total Pengeluaran</h3>
+        <h2 id="totalExpense">Rp 0</h2>
+      </div>
+
+      <div class="summary-box balance">
+        <h3>Saldo</h3>
+        <h2 id="balance">Rp 0</h2>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom: 15px;">Form Transaksi</h2>
+
+      <div class="form-grid">
+        <input type="text" id="description" placeholder="Deskripsi transaksi" />
+
+        <input type="number" id="amount" placeholder="Jumlah uang" />
+
+        <select id="type">
+          <option value="Pemasukan">Pemasukan</option>
+          <option value="Pengeluaran">Pengeluaran</option>
+        </select>
+
+        <input type="date" id="date" />
+      </div>
+
+      <div style="margin-top: 15px;">
+        <button class="btn-primary" onclick="saveTransaction()" id="saveBtn">
+          Simpan Transaksi
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Data Transaksi</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Deskripsi</th>
+            <th>Jenis</th>
+            <th>Jumlah</th>
+            <th>Tanggal</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+
+        <tbody id="transactionTable">
+          <tr>
+            <td colspan="6" class="empty">Belum ada transaksi</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+    let editIndex = null;
+
+    function formatRupiah(number) {
+      return 'Rp ' + number.toLocaleString('id-ID');
+    }
+
+    function renderTransactions() {
+      const table = document.getElementById('transactionTable');
+
+      if (transactions.length === 0) {
+        table.innerHTML = `
+          <tr>
+            <td colspan="6" class="empty">Belum ada transaksi</td>
+          </tr>
+        `;
+
+        updateSummary();
+        return;
+      }
+
+      table.innerHTML = '';
+
+      transactions.forEach((transaction, index) => {
+        table.innerHTML += `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${transaction.description}</td>
+            <td>${transaction.type}</td>
+            <td>${formatRupiah(transaction.amount)}</td>
+            <td>${transaction.date}</td>
+            <td>
+              <div class="actions">
+                <button class="btn-warning" onclick="editTransaction(${index})">
+                  Edit
+                </button>
+
+                <button class="btn-danger" onclick="deleteTransaction(${index})">
+                  Hapus
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+
+      updateSummary();
+    }
+
+    function updateSummary() {
+      let income = 0;
+      let expense = 0;
+
+      transactions.forEach(item => {
+        if (item.type === 'Pemasukan') {
+          income += item.amount;
+        } else {
+          expense += item.amount;
+        }
+      });
+
+      const balance = income - expense;
+
+      document.getElementById('totalIncome').innerText = formatRupiah(income);
+      document.getElementById('totalExpense').innerText = formatRupiah(expense);
+      document.getElementById('balance').innerText = formatRupiah(balance);
+    }
+
+    function saveTransaction() {
+      const description = document.getElementById('description').value;
+      const amount = parseInt(document.getElementById('amount').value);
+      const type = document.getElementById('type').value;
+      const date = document.getElementById('date').value;
+
+      if (!description || !amount || !date) {
+        alert('Semua field wajib diisi!');
+        return;
+      }
+
+      const transactionData = {
+        description,
+        amount,
+        type,
+        date
+      };
+
+      if (editIndex === null) {
+        transactions.push(transactionData);
+      } else {
+        transactions[editIndex] = transactionData;
+        editIndex = null;
+
+        document.getElementById('saveBtn').innerText = 'Simpan Transaksi';
+      }
+
+      localStorage.setItem('transactions', JSON.stringify(transactions));
+
+      clearForm();
+      renderTransactions();
+    }
+
+    function editTransaction(index) {
+      const transaction = transactions[index];
+
+      document.getElementById('description').value = transaction.description;
+      document.getElementById('amount').value = transaction.amount;
+      document.getElementById('type').value = transaction.type;
+      document.getElementById('date').value = transaction.date;
+
+      editIndex = index;
+
+      document.getElementById('saveBtn').innerText = 'Update Transaksi';
+    }
+
+    function deleteTransaction(index) {
+      const confirmDelete = confirm('Yakin ingin menghapus data ini?');
+
+      if (confirmDelete) {
+        transactions.splice(index, 1);
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+        renderTransactions();
+      }
+    }
+
+    function clearForm() {
+      document.getElementById('description').value = '';
+      document.getElementById('amount').value = '';
+      document.getElementById('type').value = 'Pemasukan';
+      document.getElementById('date').value = '';
+    }
+
+    renderTransactions();
+  </script>
+
+</body>
+</html>
